@@ -4,8 +4,16 @@ from game.generator import *
 from game.scoring import calculate_score
 import json, os
 
+import os
+import json
+
 def load_users():
-    with open("data/users.json", "r") as f:
+    path = os.path.join("data", "users.json")
+
+    if not os.path.exists(path):
+        return {}
+
+    with open(path, "r") as f:
         return json.load(f)
 
 def save_users(users):
