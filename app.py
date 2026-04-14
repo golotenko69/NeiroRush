@@ -3,14 +3,10 @@ from flask import Flask, render_template, request, jsonify, session, redirect
 from game.generator import *
 from game.scoring import calculate_score
 import json, os
-import os
-import json
 
-if os.path.exists("data/users.json"):
+def load_users():
     with open("data/users.json", "r") as f:
-        users = json.load(f)
-else:
-    users = {}
+        return json.load(f)
 
 def save_users(users):
     with open("data/users.json", "w") as f:
