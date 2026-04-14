@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+
+# Виртуальное окружение
+venv/
+.env/
+
+# PyCharm
+.idea/
+
+# OS
+.DS_Store
+
+# Данные (ВАЖНО)
+data/users.json

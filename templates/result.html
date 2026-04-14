@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Результат</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<div class="result-wrapper">
+
+    <div class="result-box">
+
+        <h1 class="result-title">🏁 Результат</h1>
+
+        <div class="result-score">
+            {{ xp }}
+        </div>
+
+        <div class="result-text">
+            😐 Неплохо, но можно лучше
+        </div>
+
+        <div class="result-stats">
+
+            <div class="stat">🏆 Рекорд: {{ record }}</div>
+            <div class="stat">🎯 Точность: {{ accuracy }}%</div>
+            <div class="stat">⚡ Скорость: быстро</div>
+            {% if new_record %}
+                <div class="stat highlight">🔥 Новый рекорд!</div>
+            {% endif %}
+
+        </div>
+
+        <div class="result-buttons">
+            <a href="/game/math" class="btn">🔁 Ещё раз</a>
+            <a href="/menu" class="btn secondary">🏠 Меню</a>
+        </div>
+
+    </div>
+
+</div>
+<script>
+let target = {{ score }};
+let current = 0;
+
+let interval = setInterval(() => {
+    current += Math.ceil(target / 30);
+    if (current >= target) {
+        current = target;
+        clearInterval(interval);
+    }
+    document.getElementById("bigScore").innerText = current;
+}, 30);
+</script>
+
+</body>
+</html>

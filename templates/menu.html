@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+<div class="menu-container">
+
+    <!-- ЛЕВО -->
+    <div class="main-content">
+
+        <h1 class="logo">NeuroRush ⚡</h1>
+
+        <div class="user-box">
+            <div class="user-name">👤 {{ name }}</div>
+            <div class="xp-text">XP: {{ xp }}</div>
+
+            <div class="xp-bar">
+                <div class="xp-fill" style="width: {{ progress }}%"></div>
+            </div>
+
+            <div class="xp-next">
+                До следующего ранга: {{ next_xp - xp }} XP
+            </div>
+
+            <div class="rank">{{ rank }}</div>
+        </div>
+
+        <h2>🎮 Режимы</h2>
+
+        <div class="modes">
+            <div class="mode-card" onclick="selectMode('math')">⚡ Быстрый счёт</div>
+            <div class="mode-card" onclick="selectMode('memory')">🧠 Память</div>
+            <div class="mode-card" onclick="selectMode('logic')">🧩 Логика</div>
+            <div class="mode-card" onclick="selectMode('2back')">🔁 2-back</div>
+            <div class="mode-card" onclick="selectMode('multi')">🚀 Мультизадача</div>
+        </div>
+
+    </div>
+
+    <!-- ПРАВО -->
+    <div class="sidebar">
+        <a href="/achievements">Достижения</a>
+        <a href="/rating">🏆 Рейтинг</a>
+        <a href="/duels">Дуэли</a>
+        <a href="/builder">Конструктор</a>
+    </div>
+
+</div>
+
+<!-- МОДАЛКА -->
+<div id="settingsModal" class="modal">
+    <div class="modal-content">
+
+        <span class="close" onclick="closeModal()">✖</span>
+
+        <h2>⚙️ Настройки</h2>
+
+        <label>Сложность</label>
+        <select id="difficulty">
+            <option value="easy">Легко</option>
+            <option value="medium" selected>Средне</option>
+            <option value="hard">Хард</option>
+        </select>
+
+        <label>Таймер</label>
+        <select id="timer">
+            <option value="5">5 сек</option>
+            <option value="15">15 сек</option>
+            <option value="30">30 сек</option>
+            <option value="60" selected>60 сек</option>
+        </select>
+
+        <button onclick="startGame()">Играть</button>
+
+    </div>
+</div>
+<script>
+let selectedMode = null;
+
+function selectMode(mode) {
+    selectedMode = mode;
+    document.getElementById("settingsModal").style.display = "flex";
+}
+
+function closeModal() {
+    document.getElementById("settingsModal").style.display = "none";
+}
+
+function startGame() {
+    fetch("/settings", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            difficulty: document.getElementById("difficulty").value,
+            timer: document.getElementById("timer").value
+        })
+    }).then(() => {
+        window.location = "/game/" + selectedMode;
+    });
+}
+
+function openTab(name, el) {
+    document.querySelectorAll(".tab-content").forEach(e => e.classList.remove("active"));
+    document.querySelectorAll(".tab").forEach(e => e.classList.remove("active"));
+
+    document.getElementById(name).classList.add("active");
+    el.classList.add("active");
+
+    if (name === "rating") loadLeaderboard();
+}
+
+async function loadLeaderboard() {
+    let res = await fetch("/leaderboard");
+    let data = await res.json();
+
+    let board = document.getElementById("leaderboard");
+    board.innerHTML = "";
+
+    data.forEach((u, i) => {
+        let div = document.createElement("div");
+        div.className = "player-card";
+        div.innerHTML = `<span>${i+1}. ${u.name}</span><span>${u.xp} XP</span>`;
+        board.appendChild(div);
+    });
+}
+</script>
+
+</body>
+</html>

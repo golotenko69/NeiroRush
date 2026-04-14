@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="/static/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<div class="page-wrapper">
+    <div class="page-box">
+
+        <h1 class="page-title">🏆 Рейтинг</h1>
+
+        <div id="leaderboard"></div>
+
+        <a href="/menu" class="back-btn">← Назад</a>
+
+    </div>
+</div>
+<script>
+function getRank(xp) {
+    if (xp >= 2000) return "Сильный";
+    if (xp >= 1500) return "Среднечок";
+    if (xp >= 1000) return "Средне слабый";
+    if (xp >= 600) return "Слабый";
+    if (xp >= 300) return "Очень слабый";
+    return "Новичок";
+}
+
+async function loadLeaderboard() {
+    let res = await fetch("/leaderboard");
+    let data = await res.json();
+
+    let board = document.getElementById("leaderboard");
+    board.innerHTML = "";
+
+    data.forEach((u, i) => {
+        let div = document.createElement("div");
+
+        let placeClass = "";
+        if (i === 0) placeClass = "top1";
+        else if (i === 1) placeClass = "top2";
+        else if (i === 2) placeClass = "top3";
+
+        div.className = "player-card " + placeClass;
+
+        div.innerHTML = `
+            <div class="player-left">
+                <span class="place">${i+1}</span>
+                <span class="name">${u.name}</span>
+                <span class="rank-badge">${getRank(u.xp)}</span>
+            </div>
+            <div class="xp">${u.xp} XP</div>
+        `;
+
+        board.appendChild(div);
+    });
+}
+
+loadLeaderboard();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="/static/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<div class="game-wrapper">
+
+    <div class="game-box">
+
+        <div id="timer" class="timer">⏱ 60</div>
+
+        <h1 class="title">{{ title }}</h1>
+
+        <div id="task" class="task"></div>
+
+        <div class="answer-box">
+            <input id="answer" placeholder="Введите ответ..." autofocus>
+            <button onclick="send()">→</button>
+        </div>
+
+        <div class="hud">
+            <div class="xp-box">
+                <span>XP</span>
+                <span id="xp">{{ xp }}</span>
+            </div>
+
+            <div class="combo-box" id="comboBox">
+                <span id="comboText">x0</span>
+            </div>
+        </div>
+
+        <p class="subtitle">Отвечай как можно быстрее</p>
+
+    </div>
+
+</div>
+
+<script>
+    const TIMER = {{ session.get("timer", 60) }};
+</script>
+
+<script src="/static/game.js"></script>
+
+<script>
+    const DIFFICULTY = "{{ difficulty or 'medium' }}";
+</script>
+
+
+</body>
+</html>
