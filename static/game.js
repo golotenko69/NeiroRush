@@ -113,7 +113,8 @@ function startTimer() {
         }
     }, 1000);
 }
-
+comboBox.style.transform = "scale(1.2)";
+setTimeout(() => comboBox.style.transform = "scale(1)", 150);
 startTimer();
 loadTask();
 
