@@ -11,11 +11,11 @@
 
         <h1 class="page-title">🏆 Достижения</h1>
 
-        <div class="achievement">⚡ Ответ быстрее 2 сек</div>
-        <div class="achievement">🔥 10 подряд</div>
-        <div class="achievement locked">🧠 Без ошибок</div>
-
-        <a href="/menu" class="back-btn">← Назад</a>
+        {% for code, name in names.items() %}
+    <div class="achievement {% if code not in unlocked %}locked{% endif %}">
+        {{ name }}
+    </div>
+{% endfor %}
 
     </div>
 </div>

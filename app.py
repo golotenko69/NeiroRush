@@ -1,27 +1,87 @@
 from flask import Flask, render_template, request, jsonify, session, redirect
-
+from database import get_db, init_db
 from game.generator import *
 from game.scoring import calculate_score
-import json, os
-
-import os
-import json
-
-def load_users():
-    path = os.path.join("data", "users.json")
-
-    if not os.path.exists(path):
-        return {}
-
-    with open(path, "r") as f:
-        return json.load(f)
-
-def save_users(users):
-    with open("data/users.json", "w") as f:
-        json.dump(users, f, indent=4)
 app = Flask(__name__)
 app.secret_key = "secret"
 
+ACHIEVEMENT_NAMES = {
+    "first_game": "🎮 Первая игра",
+    "grinder": "🔁 10 игр",
+    "combo_5": "🔥 Комбо 5",
+    "combo_10": "⚡ Комбо 10",
+    "accuracy_80": "🎯 Точность 80%",
+    "perfect": "💎 Идеальная игра",
+    "xp_500": "📈 500 XP",
+    "xp_1000": "🚀 1000 XP"
+}
+
+def add_history(user_id, score):
+    db = get_db()
+    cur = db.cursor()
+
+    cur.execute(
+        "INSERT INTO history (user_id, score) VALUES (?, ?)",
+        (user_id, score)
+    )
+    db.commit()
+
+
+def update_stats(name, correct, combo):
+    db = get_db()
+    cur = db.cursor()
+
+    cur.execute("""
+        UPDATE users
+        SET
+            games_played = games_played + 1,
+            correct = correct + ?,
+            best_streak = MAX(best_streak, ?)
+        WHERE name = ?
+    """, (correct, combo, name))
+
+    db.commit()
+
+def update_record(user_id, mode, score):
+    db = get_db()
+    cur = db.cursor()
+
+    cur.execute("""
+        INSERT INTO records (user_id, mode, value)
+        VALUES (?, ?, ?)
+        ON CONFLICT(user_id, mode)
+        DO UPDATE SET value = MAX(value, excluded.value)
+    """, (user_id, mode, score))
+
+    db.commit()
+
+def get_user(name):
+    db = get_db()
+    cur = db.cursor()
+
+    cur.execute("SELECT * FROM users WHERE name = ?", (name,))
+    user = cur.fetchone()
+
+    return user
+
+def create_user(name):
+    db = get_db()
+    cur = db.cursor()
+
+    cur.execute("""
+        INSERT INTO users (name, xp, games_played, correct, best_streak)
+        VALUES (?, 0, 0, 0, 0)
+    """, (name,))
+
+    db.commit()
+
+
+def update_xp(name, xp):
+    db = get_db()
+    cur = db.cursor()
+
+    cur.execute("UPDATE users SET xp = ? WHERE name = ?", (xp, name))
+    db.commit()
 
 DATA_FILE = "data/users.json"
 ROUND_TIME = 60
@@ -55,18 +115,82 @@ def get_rank(xp):
 
     return current
 
+def check_achievements(user_name):
+    db = get_db()
+    cur = db.cursor()
+
+    # получаем user_id
+    cur.execute("SELECT * FROM users WHERE name = ?", (user_name,))
+    user = cur.fetchone()
+
+    if not user:
+        return []
+
+    user_id = user["id"]
+
+    games = user["games_played"]
+    correct = user["correct"]
+    streak = user["best_streak"]
+    xp = user["xp"]
+
+    accuracy = int((correct / games) * 100) if games > 0 else 0
+
+    unlocked = []
+
+    def unlock(code):
+        try:
+            cur.execute(
+                "INSERT INTO achievements (user_id, code) VALUES (?, ?)",
+                (user_id, code)
+            )
+            unlocked.append(code)
+        except:
+            pass  # уже есть
+
+    # 🎯 ДОСТИЖЕНИЯ
+
+    if games >= 1:
+        unlock("first_game")
+
+    if games >= 10:
+        unlock("grinder")
+
+    if streak >= 5:
+        unlock("combo_5")
+
+    if streak >= 10:
+        unlock("combo_10")
+
+    if accuracy >= 80 and games >= 5:
+        unlock("accuracy_80")
+
+    if accuracy == 100 and games >= 5:
+        unlock("perfect")
+
+    if xp >= 500:
+        unlock("xp_500")
+
+    if xp >= 1000:
+        unlock("xp_1000")
+
+    db.commit()
+    return unlocked
+
 def get_user_stats(name):
-    users = load_users()
-    user = users[session["user"]]
-    user = users.get(name, {})
+    user = get_user(name)
 
-    games = user.get("games_played", 0)
-    correct = user.get("correct", 0)
-    best_streak = user.get("best_streak", 0)
+    if not user:
+        return {
+            "games": 0,
+            "accuracy": 0,
+            "streak": 0
+        }
 
-    accuracy = 0
-    if games > 0:
-        accuracy = int((correct / games) * 100)
+    games = user["games_played"]
+    correct = user["correct"]
+    best_streak = user["best_streak"]
+
+    accuracy = int((correct / games) * 100) if games > 0 else 0
 
     return {
         "games": games,
@@ -96,9 +220,7 @@ def get_level(xp):
 
 
 
-@app.route("/achievements")
-def achievements():
-    return render_template("achievements.html")
+
 
 
 @app.route("/rating")
@@ -120,15 +242,10 @@ def builder():
 def login():
     if request.method == "POST":
         username = request.form["username"]
-        users = load_users()
+        user = get_user(username)
 
-        if username not in users:
-            users[username] = {
-                "records": {"math": 0, "memory": 0, "logic": 0, "2back": 0, "multi": 0},
-                "history": [],
-                "xp": 0
-            }
-            save_users(users)
+        if not user:
+            create_user(username)
 
         session["user"] = username
         return redirect("/menu")
@@ -149,9 +266,7 @@ def menu():
     if "user" not in session:
         return redirect("/")
 
-    users = load_users()
-    user = users[session["user"]]
-
+    user = get_user(session["user"])
     xp = user["xp"]
 
     progress, next_xp = get_progress(xp)
@@ -166,22 +281,26 @@ def menu():
         next_xp=next_xp
     )
 
-
 @app.route("/game/<mode>")
 def game(mode):
-    session["correct"] = 0
-    session["wrong"] = 0
-    session['mode'] = mode
-    session["score"] = 0
-    session["combo"] = 0
     if "user" not in session:
         return redirect("/")
 
-    users = load_users()
-    user = users[session["user"]]
+    # сброс сессии
+    session["score"] = 0
+    session["correct"] = 0
+    session["wrong"] = 0
+    session["combo"] = 0
+    session["best_combo"] = 0
+    session["mode"] = mode
 
-    # защита от отсутствия xp
-    xp = user.get("xp", 0)
+    # получаем пользователя из БД
+    user = get_user(session["user"])
+
+    if not user:
+        return redirect("/")  # защита
+
+    xp = user["xp"]
     level = get_level(xp)
 
     names = {
@@ -245,26 +364,31 @@ def check():
         session['combo'],
         difficulty
     )
-    users = load_users()
-    user = users[session["user"]]
 
-    user["xp"] += score
+    user = get_user(session["user"])
+    new_xp = user["xp"] + score
 
-    save_users(users)
+    if new_xp < 0:
+        new_xp = 0
+
+    update_xp(session["user"], new_xp)
+
+    # статистика
     if correct:
         session['correct'] += 1
         session['combo'] += 1
     else:
         session['wrong'] += 1
-        session['combo'] = 1
+        session['combo'] = 0
 
-    session['score'] += score
+    session["best_combo"] = max(session["best_combo"], session["combo"])
+
+    session["score"] += score
     if session["score"] < 0:
         session["score"] = 0
 
-
     return jsonify({
-        "score": user["xp"],
+        "score": new_xp,
         "combo": session['combo'],
         "correct": correct
     })
@@ -278,42 +402,74 @@ def result():
     total = correct + wrong
     accuracy = int((correct / total) * 100) if total > 0 else 0
 
-    xp = session.get("xp", 0)
-    record = session.get("record", 0)
+    user = get_user(session["user"])
 
-    if xp > record:
-        session["record"] = xp
-        record = xp
-        new_record = True
-    else:
-        new_record = False
+    xp = user["xp"]
+    score = session.get("score", 0)
+
+    # запись истории
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT id FROM users WHERE name = ?", (session["user"],))
+    user_id = cur.fetchone()["id"]
+
+    add_history(user_id, score)
+
+    # обновление статистики
+    update_stats(session["user"], correct, session["best_combo"])
+
+    # рекорд
+    record = max(score, session.get("record", 0))
+    new_record = score > session.get("record", 0)
+    update_record(user_id, session.get("mode"), score)
+
+    session["record"] = record
+    new_achievements = check_achievements(session["user"])
 
     return render_template(
         "result.html",
-        xp=xp,
+        xp=score,
         record=record,
         accuracy=accuracy,
-        new_record=new_record
+        new_record=new_record,
+        achievements=new_achievements,
+        achievement_names=ACHIEVEMENT_NAMES
     )
+
 @app.route("/leaderboard")
 def leaderboard():
-    users = load_users()
+    db = get_db()
+    cur = db.cursor()
 
-    rating = sorted(
-        users.items(),
-        key=lambda x: x[1].get("xp", 0),
-        reverse=True
-    )
+    cur.execute("SELECT name, xp FROM users ORDER BY xp DESC LIMIT 10")
+    rows = cur.fetchall()
 
-    # преобразуем в нормальный формат
-    result = [
-        {"name": name, "xp": data.get("xp", 0)}
-        for name, data in rating[:10]
-    ]
+    result = [{"name": r["name"], "xp": r["xp"]} for r in rows]
 
     return jsonify(result)
+
+@app.route("/achievements")
+def achievements():
+    if "user" not in session:
+        return redirect("/")
+
+    db = get_db()
+    cur = db.cursor()
+
+    cur.execute("SELECT id FROM users WHERE name = ?", (session["user"],))
+    user_id = cur.fetchone()["id"]
+
+    cur.execute("SELECT code FROM achievements WHERE user_id = ?", (user_id,))
+    unlocked = [row["code"] for row in cur.fetchall()]
+
+    return render_template(
+        "achievements.html",
+        unlocked=unlocked,
+        names=ACHIEVEMENT_NAMES
+    )
 
 
 
 if __name__ == "__main__":
     app.run(debug=True)
+    init_db()

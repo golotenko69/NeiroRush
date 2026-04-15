@@ -9,6 +9,17 @@
 
 <div class="result-wrapper">
 
+        {% if achievements %}
+    <div class="result-stats">
+        <h3>🏆 Новые достижения:</h3>
+        {% for a in achievements %}
+            <div class="stat highlight">
+                {{ achievement_names[a] }}
+            </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="result-box">
 
         <h1 class="result-title">🏁 Результат</h1>
