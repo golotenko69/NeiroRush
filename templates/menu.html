@@ -3,6 +3,7 @@
 <head>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache">
 </head>
 <body>
 <div class="menu-container">
@@ -14,7 +15,9 @@
 
         <div class="user-box">
             <div class="user-name">👤 {{ name }}</div>
-            <div class="xp-text">XP: {{ xp }}</div>
+            <div class="xp-text">
+                XP: {{ xp }} ({{ progress }}%)
+            </div>
 
             <div class="xp-bar">
                 <div class="xp-fill" style="width: {{ progress }}%"></div>

@@ -213,14 +213,12 @@ def get_progress(xp):
         return 100, next_xp
 
     progress = int(((xp - prev) / (next_xp - prev)) * 100)
+
+    # 👇 ВАЖНО — чтобы не было "0%"
+    if progress == 0 and xp > 0:
+        progress = 2
+
     return progress, next_xp
-
-def get_level(xp):
-    return xp // 100 + 1
-
-
-
-
 
 
 @app.route("/rating")
@@ -280,6 +278,9 @@ def menu():
         progress=progress,
         next_xp=next_xp
     )
+
+def get_level(xp):
+    return xp // 100 + 1
 
 @app.route("/game/<mode>")
 def game(mode):
@@ -428,7 +429,7 @@ def result():
 
     return render_template(
         "result.html",
-        xp=score,
+        xp=xp,
         record=record,
         accuracy=accuracy,
         new_record=new_record,
@@ -471,5 +472,6 @@ def achievements():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
     init_db()
+    app.run(debug=True)
+
